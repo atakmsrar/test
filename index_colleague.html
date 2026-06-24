@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Расходы за неделю</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&family=Unbounded:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0e12; --surface: #16161d; --surface2: #1e1e28;
+    --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.13);
+    --text: #f0f0f5; --text2: #8888a0; --text3: #555568;
+    --green: #2eca8a; --green-dim: rgba(46,202,138,0.12);
+    --blue: #4d9fff; --blue-dim: rgba(77,159,255,0.12);
+    --red: #ff5a5a; --red-dim: rgba(255,90,90,0.1);
+    --amber: #f5a623; --amber-dim: rgba(245,166,35,0.12);
+    --accent: #7c6af7; --accent-dim: rgba(124,106,247,0.15);
+    --radius: 12px; --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Manrope', sans-serif; font-size: 14px; min-height: 100vh; padding: 40px 20px; }
+  .app { max-width: 780px; margin: 0 auto; }
+  .app-title { font-family: 'Unbounded', sans-serif; font-size: 22px; font-weight: 700; color: var(--text); letter-spacing: -0.5px; }
+  .app-title span { color: var(--accent); }
+  .week-range { font-size: 12px; color: var(--text2); margin-top: 6px; font-weight: 500; }
+  .app-header { margin-bottom: 24px; }
+
+  .rate-bar {
+    display: flex; align-items: center;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden; margin-bottom: 20px;
+  }
+  .rate-section { display: flex; align-items: center; gap: 10px; padding: 14px 18px; flex: 1; }
+  .rate-label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.7px; white-space: nowrap; }
+  .rate-input {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: var(--amber); font-family: 'Unbounded', sans-serif; font-size: 15px; font-weight: 500; min-width: 60px;
+  }
+  .rate-input::placeholder { color: var(--text3); font-family: 'Manrope', sans-serif; font-weight: 400; font-size: 13px; }
+  .rate-unit { font-size: 12px; color: var(--text3); font-weight: 600; white-space: nowrap; }
+  .rate-divider { width: 1px; background: var(--border); align-self: stretch; }
+
+  .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; transition: border-color 0.2s; }
+  .card:hover { border-color: var(--border2); }
+  .card-label { font-size: 11px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+  .card-value { font-family: 'Unbounded', sans-serif; font-size: 18px; font-weight: 500; color: var(--text); }
+  .card-value.green { color: var(--green); }
+  .card-value.blue  { color: var(--blue); }
+
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  thead th { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.7px; padding: 12px 10px; background: var(--surface2); border-bottom: 1px solid var(--border); text-align: left; }
+  thead th:nth-child(1) { width: 32%; }
+  thead th:nth-child(2) { width: 14%; }
+  thead th:nth-child(3) { width: 15%; text-align: right; }
+  thead th:nth-child(4) { width: 12%; text-align: center; }
+  thead th:nth-child(5) { width: 13%; text-align: center; }
+  thead th:nth-child(6) { width: 8%; text-align: right; color: var(--amber); }
+  thead th:nth-child(7) { width: 6%; text-align: center; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  td { padding: 9px 10px; vertical-align: middle; }
+  td input[type="text"], td input[type="number"] { width: 100%; background: transparent; border: none; outline: none; color: var(--text); font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 500; }
+  td input::placeholder { color: var(--text3); font-weight: 400; }
+  td input[type="number"] { text-align: right; }
+
+  .cur-toggle { display: flex; border-radius: 6px; overflow: hidden; border: 1px solid var(--border2); width: fit-content; margin: auto; }
+  .cur-btn { padding: 5px 10px; background: transparent; border: none; cursor: pointer; font-family: 'Unbounded', sans-serif; font-size: 11px; font-weight: 700; color: var(--text3); transition: all 0.15s; }
+  .cur-btn.usd.active { background: #1a2e1a; color: var(--green); }
+  .cur-btn.uah.active { background: #1a2233; color: var(--blue); }
+  .cur-btn:not(.active):hover { color: var(--text2); background: var(--surface2); }
+
+  .td-usd { text-align: right; font-size: 12px; color: var(--amber); font-weight: 600; font-family: 'Unbounded', sans-serif; }
+
+  .wallet-cell { text-align: center; }
+  .wallet-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border2); background: transparent; cursor: pointer; font-size: 11px; font-weight: 700; color: var(--text3); font-family: 'Unbounded', sans-serif; transition: all 0.15s; }
+  .wallet-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .wallet-btn.alt { background: var(--blue-dim); border-color: var(--blue); color: var(--blue); }
+
+  .del-cell { text-align: center; }
+  .del-btn { background: transparent; border: none; cursor: pointer; color: var(--text3); font-size: 17px; line-height: 1; padding: 3px 5px; border-radius: 6px; transition: all 0.15s; }
+  .del-btn:hover { color: var(--red); background: var(--red-dim); }
+
+  .add-btn { width: 100%; padding: 11px; background: transparent; border: 1px dashed var(--border2); border-radius: var(--radius); color: var(--text2); font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 20px; }
+  .add-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+  .info-bar { display: flex; gap: 12px; margin-bottom: 16px; }
+  .info-field { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; flex: 1; }
+  .info-label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.7px; white-space: nowrap; }
+  .info-input { flex: 1; background: transparent; border: none; outline: none; color: var(--text); font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 500; min-width: 0; }
+  .info-input::placeholder { color: var(--text3); font-weight: 400; }
+
+  .bottom-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; }
+
+  .tg-btn { display: flex; align-items: center; gap: 8px; padding: 11px 22px; background: var(--accent); border: none; border-radius: var(--radius-sm); color: #fff; font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+  .tg-btn:hover { background: #6a58e8; transform: translateY(-1px); }
+  .tg-btn:active { transform: translateY(0) scale(0.98); }
+  .tg-btn.loading { opacity: 0.6; cursor: not-allowed; }
+  .tg-btn.ok { background: var(--green); }
+  .tg-btn.err { background: var(--red); }
+
+  .toast { display: none; position: fixed; bottom: 28px; right: 28px; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius); padding: 14px 18px; font-size: 13px; font-weight: 500; color: var(--text); box-shadow: 0 8px 32px rgba(0,0,0,0.4); z-index: 100; animation: slideIn 0.2s ease; }
+  .toast.show { display: block; }
+  .toast.ok { border-color: var(--green); color: var(--green); }
+  .toast.err { border-color: var(--red); color: var(--red); }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  .day-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .day-btn { flex: 1; min-width: 180px; padding: 11px; background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text); font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.15s; }
+  .day-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .day-btn.danger:hover { border-color: var(--red); color: var(--red); background: var(--red-dim); }
+  .day-btn.excel:hover { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+  .week-history { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px; }
+  .week-history-title { font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+  .week-history-list { display: flex; flex-direction: column; gap: 6px; color: var(--text2); font-size: 12px; }
+  .week-history-row { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--border); padding-top: 6px; }
+  .week-history-row:first-child { border-top: none; padding-top: 0; }
+
+  @media (max-width: 600px) {
+    .summary { grid-template-columns: 1fr 1fr; }
+    .summary .card:first-child { grid-column: span 2; }
+    .card-value { font-size: 15px; }
+    thead th:nth-child(6), td:nth-child(6) { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="app-header">
+    <div class="app-title">Расходы<span>.</span></div>
+    <div class="week-range" id="week-range"></div>
+  </div>
+
+  <div class="rate-bar">
+    <div class="rate-section">
+      <div>
+        <div class="rate-label">Курс гривны</div>
+      </div>
+      <input class="rate-input" id="rate-uah" type="number" placeholder="напр. 41.5" min="0" step="0.01" oninput="render()">
+      <span class="rate-unit">₴ = 1 $</span>
+    </div>
+    <div class="rate-divider"></div>
+    <div class="rate-section" style="flex: 0; padding: 14px 24px; gap: 6px;">
+      <span class="rate-label" style="color: var(--text3);">Итог всегда в</span>
+      <span style="font-family:'Unbounded',sans-serif; font-size:15px; font-weight:700; color:var(--green);">$</span>
+    </div>
+  </div>
+
+  <div class="summary">
+    <div class="card">
+      <div class="card-label">Всего (в $)</div>
+      <div class="card-value" id="total">$ 0.00</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Основной кошелёк</div>
+      <div class="card-value green" id="main-total">$ 0.00</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Доп. кошелёк *</div>
+      <div class="card-value blue" id="alt-total">$ 0.00</div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Описание</th>
+          <th>Дата</th>
+          <th style="text-align:right">Сумма</th>
+          <th style="text-align:center">Валюта</th>
+          <th style="text-align:center">* кошелёк</th>
+          <th style="text-align:right; color:var(--amber)">= $</th>
+          <th style="text-align:center">—</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <button class="add-btn" onclick="addRow()">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    Добавить расход
+  </button>
+
+  <div class="day-actions">
+    <button class="day-btn" onclick="finishDay()">✓ Закончить день и сохранить</button>
+    <button class="day-btn excel" onclick="syncWeekToGoogleSheets()">📗 Записать неделю в Google Таблицу</button>
+    <button class="day-btn danger" onclick="clearWeek()">Очистить сохранённую неделю</button>
+  </div>
+
+  <div class="week-history">
+    <div class="week-history-title">Сохранённые дни недели</div>
+    <div class="week-history-list" id="week-history-list"></div>
+  </div>
+
+  <div class="info-bar">
+    <div class="info-field">
+      <span class="info-label">Отправитель</span>
+      <input class="info-input" id="sender" type="text" placeholder="Имя или подпись...">
+    </div>
+  </div>
+
+  <div class="bottom-bar">
+    <div class="legend">
+      <div class="legend-item"><div class="dot" style="background:#2eca8a"></div>Основной кошелёк</div>
+      <div class="legend-item"><div class="dot" style="background:#4d9fff"></div>* Дополнительный кошелёк</div>
+    </div>
+    <button class="tg-btn" id="tg-btn" onclick="sendTelegram()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      Отправить отчёт в Telegram
+    </button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="xlsx.full.min.js"></script>
+<script>
+const BOT_TOKEN = '8930934164:AAH2TmYyb1ZVMr1V-FV_qIsNjv87968sGW0';
+const CHAT_ID   = '-1003925885016';
+const STORAGE_KEY = 'expenseTrackerWeek_colleague_v2';
+const CURRENT_KEY = 'expenseTrackerCurrentDay_colleague_v2';
+const SHEETS_WEB_APP_URL = 'ВСТАВЬ_СЮДА_URL_НОВОГО_GAS';
+
+let rows = [], nextId = 1;
+
+function todayStr() {
+  return new Date().toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+
+function weekKey(date = new Date()) {
+  const d = date.getDay() || 7;
+  const mon = new Date(date); mon.setHours(0,0,0,0); mon.setDate(date.getDate() - d + 1);
+  return mon.toISOString().slice(0, 10);
+}
+
+function weekRange() {
+  const now = new Date(), d = now.getDay() || 7;
+  const mon = new Date(now); mon.setDate(now.getDate() - d + 1);
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+  const f = x => x.toLocaleDateString('ru-RU', { day:'2-digit', month:'long' });
+  return f(mon) + ' — ' + f(sun) + ' ' + sun.getFullYear();
+}
+
+document.getElementById('week-range').textContent = weekRange();
+
+function loadWeekData() {
+  try {
+    const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    if (data.weekKey === weekKey() && Array.isArray(data.days)) return data;
+  } catch(e) {}
+  return { weekKey: weekKey(), days: [] };
+}
+
+function saveWeekData(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  renderHistory();
+}
+
+function saveCurrentDayDraft() {
+  const payload = {
+    weekKey: weekKey(),
+    rows,
+    nextId,
+    rate: document.getElementById('rate-uah').value,
+    sender: document.getElementById('sender').value
+  };
+  localStorage.setItem(CURRENT_KEY, JSON.stringify(payload));
+}
+
+function loadCurrentDayDraft() {
+  try {
+    const data = JSON.parse(localStorage.getItem(CURRENT_KEY) || '{}');
+    if (data.weekKey === weekKey() && Array.isArray(data.rows)) {
+      rows = data.rows;
+      nextId = data.nextId || (rows.reduce((m,r) => Math.max(m, r.id||0), 0) + 1);
+      document.getElementById('rate-uah').value = data.rate || '';
+      document.getElementById('sender').value = data.sender || '';
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
+function clearCurrentDayDraft() {
+  localStorage.removeItem(CURRENT_KEY);
+}
+
+function getRate() {
+  return parseFloat(document.getElementById('rate-uah').value) || null;
+}
+
+function toUSD(amount, cur, rateOverride = null) {
+  const v = parseFloat(amount) || 0;
+  if (cur === '$') return v;
+  const rate = rateOverride || getRate();
+  return rate ? v / rate : null;
+}
+
+function fmtUSD(v) {
+  return v === null ? '—' : '$ ' + v.toFixed(2);
+}
+
+function addRow(desc='', amount='', date='', cur='$', isAlt=false) {
+  const id = nextId++;
+  rows.push({ id, desc, amount, date: date || todayStr(), cur, isAlt });
+  render();
+  saveCurrentDayDraft();
+  setTimeout(() => { const el = document.getElementById('d' + id); if (el) el.focus(); }, 20);
+}
+
+function removeRow(id) { rows = rows.filter(r => r.id !== id); render(); saveCurrentDayDraft(); }
+
+function setField(id, field, val) {
+  const r = rows.find(r => r.id === id);
+  if (!r) return;
+  r[field] = val;
+  if (field === 'amount') { updateRowUsd(id); calcTotals(); }
+  saveCurrentDayDraft();
+}
+
+function setCur(id, cur) {
+  const r = rows.find(r => r.id === id);
+  if (r) { r.cur = cur; render(); saveCurrentDayDraft(); }
+}
+
+function toggleWallet(id) {
+  const r = rows.find(r => r.id === id);
+  if (r) { r.isAlt = !r.isAlt; render(); saveCurrentDayDraft(); }
+}
+
+function calcRowsTotals(list, rateOverride = null) {
+  let total = 0, main = 0, alt = 0;
+  list.forEach(r => {
+    const u = toUSD(r.amount, r.cur, rateOverride) || 0;
+    total += u;
+    if (r.isAlt) alt += u; else main += u;
+  });
+  return { total, main, alt };
+}
+
+function calcTotals() {
+  const t = calcRowsTotals(rows);
+  document.getElementById('total').textContent = '$ ' + t.total.toFixed(2);
+  document.getElementById('main-total').textContent = '$ ' + t.main.toFixed(2);
+  document.getElementById('alt-total').textContent = '$ ' + t.alt.toFixed(2);
+}
+
+function updateRowUsd(id) {
+  const r = rows.find(r => r.id === id);
+  const cell = document.querySelector(`tr[data-row-id="${id}"] .td-usd`);
+  if (!r || !cell) return;
+  cell.textContent = r.cur === '$' ? '—' : fmtUSD(toUSD(r.amount, r.cur));
+}
+
+function render() {
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+  rows.forEach(row => {
+    const usdStr = fmtUSD(toUSD(row.amount, row.cur));
+    const tr = document.createElement('tr');
+    tr.dataset.rowId = row.id;
+    tr.innerHTML = `
+      <td><input id="d${row.id}" type="text" placeholder="На что потратил..." value="${esc(row.desc)}" oninput="setField(${row.id},'desc',this.value)"></td>
+      <td><input type="text" value="${esc(row.date)}" oninput="setField(${row.id},'date',this.value)" style="text-align:center;font-size:12px;"></td>
+      <td style="text-align:right">
+        <input type="number" placeholder="0" value="${row.amount}" min="0" step="0.01" oninput="setField(${row.id},'amount',this.value)">
+      </td>
+      <td>
+        <div class="cur-toggle">
+          <button class="cur-btn usd ${row.cur==='$'?'active':''}" onclick="setCur(${row.id},'$')">$</button>
+          <button class="cur-btn uah ${row.cur==='₴'?'active':''}" onclick="setCur(${row.id},'₴')">₴</button>
+        </div>
+      </td>
+      <td class="wallet-cell">
+        <button class="wallet-btn ${row.isAlt?'alt':''}" onclick="toggleWallet(${row.id})">${row.isAlt?'*':'—'}</button>
+      </td>
+      <td class="td-usd">${row.cur==='$' ? '—' : usdStr}</td>
+      <td class="del-cell"><button class="del-btn" onclick="removeRow(${row.id})">×</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  calcTotals();
+}
+
+function esc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type || '');
+  setTimeout(() => { t.className = 'toast'; }, 3500);
+}
+
+function activeRows(list = rows) {
+  return list.filter(r => (parseFloat(r.amount)||0) > 0);
+}
+
+function reportDays(includeCurrent = true) {
+  const data = loadWeekData();
+  const days = data.days.map(d => ({ ...d, isDraft: false }));
+  const currentActive = activeRows();
+  if (includeCurrent && currentActive.length) {
+    days.push({
+      date: currentActive[0].date || todayStr(),
+      rate: getRate(),
+      rows: currentActive.map(r => ({ ...r })),
+      totals: calcRowsTotals(currentActive, getRate()),
+      isDraft: true
+    });
+  }
+  return days.sort((a,b) => String(a.date).localeCompare(String(b.date)));
+}
+
+function excelFileName() {
+  return 'Расходы_' + weekKey() + '.xlsx';
+}
+
+function buildExcelData(includeCurrent = true) {
+  const days = reportDays(includeCurrent);
+  const expenseRows = [];
+  const dayRows = [];
+  let weekTotal = 0, weekMain = 0, weekAlt = 0;
+
+  days.forEach(day => {
+    const totals = calcRowsTotals(day.rows, day.rate);
+    weekTotal += totals.total;
+    weekMain += totals.main;
+    weekAlt += totals.alt;
+    dayRows.push({
+      'Дата': day.date,
+      'Статус': day.isDraft ? 'Текущий день (не сохранён)' : 'Сохранён',
+      'Курс ₴ за $': day.rate || '',
+      'Основной кошелёк, $': Number(totals.main.toFixed(2)),
+      'Доп. кошелёк, $': Number(totals.alt.toFixed(2)),
+      'Итого за день, $': Number(totals.total.toFixed(2)),
+      'Кол-во расходов': day.rows.length
+    });
+    day.rows.forEach(r => {
+      const amount = parseFloat(r.amount) || 0;
+      const usd = toUSD(r.amount, r.cur, day.rate);
+      expenseRows.push({
+        'Неделя': weekRange(),
+        'Дата': r.date || day.date,
+        'Описание': r.desc || '—',
+        'Сумма': amount,
+        'Валюта': r.cur,
+        'Курс ₴ за $': r.cur === '₴' ? (day.rate || '') : '',
+        'Сумма в $': usd === null ? '' : Number(usd.toFixed(2)),
+        'Кошелёк': r.isAlt ? 'Дополнительный' : 'Основной',
+        'День сохранён': day.isDraft ? 'Нет' : 'Да'
+      });
+    });
+  });
+
+  const summaryRows = [
+    { 'Показатель': 'Неделя', 'Значение': weekRange() },
+    { 'Показатель': 'Основной кошелёк, $', 'Значение': Number(weekMain.toFixed(2)) },
+    { 'Показатель': 'Доп. кошелёк, $', 'Значение': Number(weekAlt.toFixed(2)) },
+    { 'Показатель': 'Всего за неделю, $', 'Значение': Number(weekTotal.toFixed(2)) },
+    { 'Показатель': 'Дней в отчёте', 'Значение': days.length },
+    { 'Показатель': 'Расходов в отчёте', 'Значение': expenseRows.length }
+  ];
+
+  return { expenseRows, dayRows, summaryRows };
+}
+
+function exportExcel(silent = false) {
+  const { expenseRows, dayRows, summaryRows } = buildExcelData(true);
+  if (!expenseRows.length) {
+    if (!silent) showToast('Нет данных для Excel', 'err');
+    return;
+  }
+  if (!window.XLSX) {
+    downloadCsvFallback(expenseRows);
+    showToast('Excel-библиотека не загрузилась. Скачан CSV для Excel.', 'err');
+    return;
+  }
+  const wb = XLSX.utils.book_new();
+  const wsExpenses = XLSX.utils.json_to_sheet(expenseRows);
+  const wsDays = XLSX.utils.json_to_sheet(dayRows);
+  const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
+  wsExpenses['!cols'] = [
+    { wch: 28 }, { wch: 12 }, { wch: 34 }, { wch: 12 }, { wch: 10 },
+    { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 14 }
+  ];
+  wsDays['!cols'] = [
+    { wch: 12 }, { wch: 24 }, { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 16 }, { wch: 14 }
+  ];
+  wsSummary['!cols'] = [{ wch: 24 }, { wch: 32 }];
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Итоги');
+  XLSX.utils.book_append_sheet(wb, wsDays, 'Дни');
+  XLSX.utils.book_append_sheet(wb, wsExpenses, 'Расходы');
+  XLSX.writeFile(wb, excelFileName());
+  if (!silent) showToast('Excel-таблица скачана', 'ok');
+}
+
+function downloadCsvFallback(expenseRows) {
+  const headers = Object.keys(expenseRows[0] || {});
+  const csv = [headers.join(';')].concat(expenseRows.map(row => headers.map(h => {
+    const value = String(row[h] ?? '').replace(/"/g, '""');
+    return '"' + value + '"';
+  }).join(';'))).join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = excelFileName().replace('.xlsx', '.csv');
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function sheetsReady() {
+  return SHEETS_WEB_APP_URL && !SHEETS_WEB_APP_URL.includes('ВСТАВЬ_СЮДА_URL');
+}
+
+function buildSheetsPayload(days, mode = 'append') {
+  const sender = document.getElementById('sender').value.trim();
+  const rowsForSheet = [];
+  days.forEach(day => {
+    const totals = calcRowsTotals(day.rows, day.rate);
+    day.rows.forEach(r => {
+      const amount = parseFloat(r.amount) || 0;
+      const usd = toUSD(r.amount, r.cur, day.rate);
+      rowsForSheet.push({
+        weekKey: weekKey(),
+        weekRange: weekRange(),
+        date: r.date || day.date,
+        description: r.desc || '—',
+        amount,
+        currency: r.cur,
+        rate: day.rate || '',
+        amountUsd: usd === null ? '' : Number(usd.toFixed(2)),
+        wallet: r.isAlt ? 'Дополнительный' : 'Основной',
+        dayTotalUsd: Number(totals.total.toFixed(2)),
+        mainTotalUsd: Number(totals.main.toFixed(2)),
+        altTotalUsd: Number(totals.alt.toFixed(2)),
+        sender,
+        savedAt: day.savedAt || new Date().toISOString(),
+        status: day.isDraft ? 'Текущий день' : 'Сохранённый день'
+      });
+    });
+  });
+  return {
+    mode,
+    spreadsheetId: '18WXyXuFPx00LN6zmH7FVZKIiQ2jzazChJ5AoiA9KU8s',
+    sheetGid: 1615180526,
+    weekKey: weekKey(),
+    weekRange: weekRange(),
+    rows: rowsForSheet
+  };
+}
+
+async function sendToGoogleSheets(days, mode = 'append', silent = false) {
+  if (!sheetsReady()) {
+    if (!silent) showToast('Сначала вставь URL Google Apps Script в SHEETS_WEB_APP_URL', 'err');
+    return false;
+  }
+  const payload = buildSheetsPayload(days, mode);
+  if (!payload.rows.length) {
+    if (!silent) showToast('Нет данных для записи в Google Таблицу', 'err');
+    return false;
+  }
+  try {
+    await fetch(SHEETS_WEB_APP_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    if (!silent) showToast('Данные отправлены в Google Таблицу', 'ok');
+    return true;
+  } catch (e) {
+    if (!silent) showToast('Ошибка записи в Google Таблицу: ' + e.message, 'err');
+    return false;
+  }
+}
+
+async function syncWeekToGoogleSheets() {
+  const days = reportDays(true);
+  if (!days.length) { showToast('Нет данных для записи в Google Таблицу', 'err'); return; }
+  await sendToGoogleSheets(days, 'replaceWeek', false);
+}
+
+async function finishDay() {
+  const dayRows = activeRows();
+  if (!dayRows.length) { showToast('Нет расходов для сохранения дня', 'err'); return; }
+
+  const date = dayRows[0].date || todayStr();
+  const rate = getRate();
+  if (dayRows.some(r => r.cur === '₴') && !rate) {
+    showToast('Укажи курс гривны перед сохранением дня', 'err');
+    return;
+  }
+
+  const data = loadWeekData();
+  const cleanRows = dayRows.map(r => ({
+    desc: r.desc || '—',
+    amount: r.amount,
+    date: r.date || date,
+    cur: r.cur,
+    isAlt: !!r.isAlt
+  }));
+  const totals = calcRowsTotals(cleanRows, rate);
+  const savedDay = { date, rate, rows: cleanRows, totals, savedAt: new Date().toISOString() };
+
+  const oldIndex = data.days.findIndex(d => d.date === date);
+  if (oldIndex >= 0) data.days[oldIndex] = savedDay;
+  else data.days.push(savedDay);
+  data.days.sort((a,b) => a.date.localeCompare(b.date));
+  saveWeekData(data);
+  await sendToGoogleSheets([savedDay], 'replaceDay', true);
+
+  rows = [];
+  nextId = 1;
+  clearCurrentDayDraft();
+  addRow('', '', todayStr(), '$', false);
+  showToast('День сохранён и отправлен в Google Таблицу. Можно вводить следующий день.', 'ok');
+}
+
+function clearWeek() {
+  if (!confirm('Точно удалить все сохранённые дни этой недели?')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  renderHistory();
+  showToast('Сохранённая неделя очищена', 'ok');
+}
+
+function renderHistory() {
+  const box = document.getElementById('week-history-list');
+  if (!box) return;
+  const data = loadWeekData();
+  if (!data.days.length) {
+    box.textContent = 'Пока нет сохранённых дней';
+    return;
+  }
+  box.innerHTML = '';
+  data.days.forEach(day => {
+    const row = document.createElement('div');
+    row.className = 'week-history-row';
+    row.innerHTML = `<span>${esc(day.date)} · ${day.rows.length} расход(ов)</span><strong>$ ${Number(day.totals.total || 0).toFixed(2)}</strong>`;
+    box.appendChild(row);
+  });
+}
+
+function rowLine(r, rateOverride = null) {
+  const v = parseFloat(r.amount)||0;
+  const usd = toUSD(r.amount, r.cur, rateOverride);
+  const conv = (usd !== null && r.cur !== '$') ? `  ≈ $ ${usd.toFixed(2)}` : '';
+  return `• ${r.desc||'—'}  —  ${v.toLocaleString('ru-RU')} ${r.cur}${conv}  (${r.date})`;
+}
+
+function buildText() {
+  const sender = document.getElementById('sender').value.trim();
+  const days = reportDays(true);
+
+  const lines = ['📊 Недельный отчёт по расходам', 'Неделя: ' + weekRange()];
+  if (sender) lines.push('👤 Отправитель: ' + sender);
+  lines.push('');
+
+  let weekTotal = 0, weekMain = 0, weekAlt = 0;
+
+  days.forEach(day => {
+    const totals = calcRowsTotals(day.rows, day.rate);
+    weekTotal += totals.total;
+    weekMain += totals.main;
+    weekAlt += totals.alt;
+    lines.push(`📅 ${day.date}${day.isDraft ? ' (текущий день, ещё не сохранён)' : ''}`);
+    if (day.rate) lines.push(`💱 Курс: ${day.rate} ₴ = 1 $`);
+    const mainR = day.rows.filter(r => !r.isAlt && (parseFloat(r.amount)||0) > 0);
+    const altR  = day.rows.filter(r =>  r.isAlt && (parseFloat(r.amount)||0) > 0);
+    if (mainR.length) {
+      lines.push('💳 Основной кошелёк');
+      mainR.forEach(r => lines.push(rowLine(r, day.rate)));
+    }
+    if (altR.length) {
+      lines.push('💙 Доп. кошелёк (*)');
+      altR.forEach(r => lines.push(rowLine(r, day.rate)));
+    }
+    lines.push(`Итого за день: $ ${totals.total.toFixed(2)}`, '');
+  });
+
+  lines.push(`💳 Основной кошелёк за неделю: $ ${weekMain.toFixed(2)}`);
+  lines.push(`💙 Доп. кошелёк за неделю: $ ${weekAlt.toFixed(2)}`);
+  lines.push(`💰 Всего за неделю: $ ${weekTotal.toFixed(2)}`);
+  return lines.join('\n');
+}
+
+const TG_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
+
+async function sendTelegram() {
+  const btn = document.getElementById('tg-btn');
+  if (btn.classList.contains('loading')) return;
+  const data = loadWeekData();
+  if (!data.days.length && !activeRows().length) { showToast('Нет расходов для отправки', 'err'); return; }
+  if (activeRows().some(r => r.cur === '₴') && !getRate()) { showToast('Укажи курс гривны для текущего дня', 'err'); return; }
+
+  btn.classList.add('loading');
+  btn.textContent = 'Отправляем...';
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: CHAT_ID, text: buildText() })
+    });
+    const json = await res.json();
+    btn.classList.remove('loading');
+    if (json.ok) {
+      btn.classList.add('ok');
+      btn.textContent = '✓ Отправлено!';
+      showToast('Недельный отчёт отправлен в группу', 'ok');
+      setTimeout(() => { btn.classList.remove('ok'); btn.innerHTML = TG_ICON + ' Отправить отчёт в Telegram'; }, 3000);
+    } else {
+      throw new Error(json.description || 'Ошибка API');
+    }
+  } catch(e) {
+    btn.classList.remove('loading');
+    btn.classList.add('err');
+    btn.textContent = '✕ Ошибка: ' + e.message;
+    showToast('Не удалось отправить: ' + e.message, 'err');
+    setTimeout(() => { btn.classList.remove('err'); btn.innerHTML = TG_ICON + ' Отправить отчёт в Telegram'; }, 4000);
+  }
+}
+
+document.getElementById('rate-uah').addEventListener('input', () => { render(); saveCurrentDayDraft(); });
+document.getElementById('sender').addEventListener('input', saveCurrentDayDraft);
+
+if (!loadCurrentDayDraft()) {
+  addRow('', '', todayStr(), '$', false);
+} else {
+  render();
+}
+renderHistory();
+</script>
+</body>
+</html>
